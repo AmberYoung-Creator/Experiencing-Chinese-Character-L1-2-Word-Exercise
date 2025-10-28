@@ -1,522 +1,1139 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1"
-  />
-  <title>Experiencing Chinese Characters · L1 & L2 Trainer</title>
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    html, body { height: 100%; background:#f6fff8; }
-    .btn { @apply px-3 py-2 rounded-xl shadow font-medium border; }
-    .btn-primary { @apply bg-green-600 text-white hover:bg-green-700; }
-    .btn-soft { @apply bg-white hover:bg-green-50; }
-    .chip { @apply text-xs px-2 py-0.5 rounded-full border bg-white; }
-    .kbd { @apply text-[10px] px-1.5 py-0.5 rounded border bg-white; }
-    .card { @apply rounded-2xl shadow-lg bg-white; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chinese Character Learning</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        
+        .card {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+        
+        .card-front, .card-back {
+            backface-visibility: hidden;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .card-back {
+            transform: rotateY(180deg);
+        }
+        
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+        
+        .word-card {
+            transition: all 0.3s ease;
+        }
+        
+        .word-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .game-tile {
+            transition: all 0.3s ease;
+        }
+        
+        .game-tile:hover {
+            transform: scale(1.05);
+        }
+        
+        .pulse-success {
+            animation: pulseSuccess 0.5s;
+        }
+        
+        @keyframes pulseSuccess {
+            0% { box-shadow: 0 0 0 0 rgba(72, 187, 120, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(72, 187, 120, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(72, 187, 120, 0); }
+        }
+    </style>
 </head>
-<body class="text-gray-800">
-  <div id="root"></div>
+<body class="bg-green-50 min-h-screen">
+    <div id="root"></div>
 
-  <script type="text/babel">
-/** =======================
- *  Utilities
- *  ======================= */
-const speak = (text, lang='zh-CN') => {
-  try {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  } catch (e) { /* no-op */ }
-};
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
 
-const sample = (arr) => arr[Math.floor(Math.random() * arr.length)];
-const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+        // Word data structure
+        const wordData = {
+            'L1': [
+                { chinese: '一个', english: 'one/a', russian: 'один/одна' },
+                { chinese: '一天', english: 'one day', russian: 'один день' },
+                { chinese: '二十', english: 'twenty', russian: 'двадцать' },
+                { chinese: '十二', english: 'twelve', russian: 'двенадцать' },
+                { chinese: '三十', english: 'thirty', russian: 'тридцать' },
+                { chinese: '十三', english: 'thirteen', russian: 'тринадцать' },
+                { chinese: '十一', english: 'eleven', russian: 'одиннадцать' },
+                { chinese: '三十二', english: 'thirty-two', russian: 'тридцать два' },
+                { chinese: '上午', english: 'morning', russian: 'утро' },
+                { chinese: '上课', english: 'attend class', russian: 'посещать занятия' },
+                { chinese: '一千', english: 'one thousand', russian: 'одна тысяча' },
+                { chinese: '三千', english: 'three thousand', russian: 'три тысячи' },
+                { chinese: '下午', english: 'afternoon', russian: 'после полудня' },
+                { chinese: '学生', english: 'student', russian: 'студент' },
+                { chinese: '一个学生', english: 'one student', russian: 'один студент' },
+                { chinese: '十八', english: 'eighteen', russian: 'восемнадцать' },
+                { chinese: '八十', english: 'eighty', russian: 'восемьдесят' },
+                { chinese: '一个人', english: 'one person', russian: 'один человек' },
+                { chinese: '中国人', english: 'Chinese person', russian: 'китаец' },
+                { chinese: '八个学生', english: 'eight students', russian: 'восемь студентов' },
+                { chinese: '三个中国人', english: 'three Chinese people', russian: 'три китайца' },
+                { chinese: '今天', english: 'today', russian: 'сегодня' },
+                { chinese: '明天', english: 'tomorrow', russian: 'завтра' },
+                { chinese: '下课', english: 'finish class', russian: 'закончить занятия' },
+                { chinese: '六十', english: 'sixty', russian: 'шестьдесят' },
+                { chinese: '六千', english: 'six thousand', russian: 'шесть тысяч' },
+                { chinese: '学习', english: 'study', russian: 'учиться' }
+            ],
+            'L2': [
+                { chinese: '工人', english: 'worker', russian: 'рабочий' },
+                { chinese: '工作', english: 'work', russian: 'работа' },
+                { chinese: '干什么', english: 'what to do', russian: 'что делать' },
+                { chinese: '土豆', english: 'potato', russian: 'картофель' },
+                { chinese: '王老师', english: 'Teacher Wang', russian: 'Учитель Ван' },
+                { chinese: '我姓王', english: 'My surname is Wang', russian: 'Моя фамилия Ван' },
+                { chinese: '牛奶', english: 'milk', russian: 'молоко' },
+                { chinese: '牛肉', english: 'beef', russian: 'говядина' },
+                { chinese: '工厂', english: 'factory', russian: 'фабрика' },
+                { chinese: '广告', english: 'advertisement', russian: 'реклама' },
+                { chinese: '大学', english: 'university', russian: 'университет' },
+                { chinese: '太好了', english: 'great', russian: 'отлично' },
+                { chinese: '开门', english: 'open the door', russian: 'открыть дверь' },
+                { chinese: '开始', english: 'start', russian: 'начать' },
+                { chinese: '关门', english: 'close the door', russian: 'закрыть дверь' },
+                { chinese: '木门', english: 'wooden door', russian: 'деревянная дверь' },
+                { chinese: '本子', english: 'notebook', russian: 'тетрадь' },
+                { chinese: '一本书', english: 'a book', russian: 'одна книга' },
+                { chinese: '不是', english: 'is not', russian: 'не является' },
+                { chinese: '不好', english: 'not good', russian: 'не хорошо' },
+                { chinese: '中文', english: 'Chinese language', russian: 'китайский язык' },
+                { chinese: '英文', english: 'English language', russian: 'английский язык' },
+                { chinese: '多少', english: 'how much/many', russian: 'сколько' },
+                { chinese: '很少', english: 'very few', russian: 'очень мало' },
+                { chinese: '来中国', english: 'come to China', russian: 'приехать в Китай' },
+                { chinese: '来北京', english: 'come to Beijing', russian: 'приехать в Пекин' },
+                { chinese: '走路', english: 'walk', russian: 'ходить пешком' },
+                { chinese: '作业', english: 'homework', russian: 'домашнее задание' },
+                { chinese: '火车', english: 'train', russian: 'поезд' },
+                { chinese: '一斤', english: 'one jin (500g)', russian: 'один цзинь (500г)' },
+                { chinese: '八斤', english: 'eight jin', russian: 'восемь цзиней' },
+                { chinese: '今年', english: 'this year', russian: 'в этом году' },
+                { chinese: '明年', english: 'next year', russian: 'в следующем году' },
+                { chinese: '头发', english: 'hair', russian: 'волосы' },
+                { chinese: '电话卡', english: 'phone card', russian: 'телефонная карта' },
+                { chinese: '一张卡', english: 'one card', russian: 'одна карта' },
+                { chinese: '一共', english: 'altogether', russian: 'всего' }
+            ],
+            'L1&2': [
+                { chinese: '一个', english: 'one/a', russian: 'один/одна' },
+                { chinese: '一天', english: 'one day', russian: 'один день' },
+                { chinese: '二十', english: 'twenty', russian: 'двадцать' },
+                { chinese: '十二', english: 'twelve', russian: 'двенадцать' },
+                { chinese: '三十', english: 'thirty', russian: 'тридцать' },
+                { chinese: '十三', english: 'thirteen', russian: 'тринадцать' },
+                { chinese: '十一', english: 'eleven', russian: 'одиннадцать' },
+                { chinese: '三十二', english: 'thirty-two', russian: 'тридцать два' },
+                { chinese: '上午', english: 'morning', russian: 'утро' },
+                { chinese: '上课', english: 'attend class', russian: 'посещать занятия' },
+                { chinese: '一千', english: 'one thousand', russian: 'одна тысяча' },
+                { chinese: '三千', english: 'three thousand', russian: 'три тысячи' },
+                { chinese: '下午', english: 'afternoon', russian: 'после полудня' },
+                { chinese: '学生', english: 'student', russian: 'студент' },
+                { chinese: '一个学生', english: 'one student', russian: 'один студент' },
+                { chinese: '十八', english: 'eighteen', russian: 'восемнадцать' },
+                { chinese: '八十', english: 'eighty', russian: 'восемьдесят' },
+                { chinese: '一个人', english: 'one person', russian: 'один человек' },
+                { chinese: '中国人', english: 'Chinese person', russian: 'китаец' },
+                { chinese: '八个学生', english: 'eight students', russian: 'восемь студентов' },
+                { chinese: '三个中国人', english: 'three Chinese people', russian: 'три китайца' },
+                { chinese: '今天', english: 'today', russian: 'сегодня' },
+                { chinese: '明天', english: 'tomorrow', russian: 'завтра' },
+                { chinese: '下课', english: 'finish class', russian: 'закончить занятия' },
+                { chinese: '六十', english: 'sixty', russian: 'шестьдесят' },
+                { chinese: '六千', english: 'six thousand', russian: 'шесть тысяч' },
+                { chinese: '学习', english: 'study', russian: 'учиться' }
+                { chinese: '工人', english: 'worker', russian: 'рабочий' },
+                { chinese: '工作', english: 'work', russian: 'работа' },
+                { chinese: '干什么', english: 'what to do', russian: 'что делать' },
+                { chinese: '土豆', english: 'potato', russian: 'картофель' },
+                { chinese: '王老师', english: 'Teacher Wang', russian: 'Учитель Ван' },
+                { chinese: '我姓王', english: 'My surname is Wang', russian: 'Моя фамилия Ван' },
+                { chinese: '牛奶', english: 'milk', russian: 'молоко' },
+                { chinese: '牛肉', english: 'beef', russian: 'говядина' },
+                { chinese: '工厂', english: 'factory', russian: 'фабрика' },
+                { chinese: '广告', english: 'advertisement', russian: 'реклама' },
+                { chinese: '大学', english: 'university', russian: 'университет' },
+                { chinese: '太好了', english: 'great', russian: 'отлично' },
+                { chinese: '开门', english: 'open the door', russian: 'открыть дверь' },
+                { chinese: '开始', english: 'start', russian: 'начать' },
+                { chinese: '关门', english: 'close the door', russian: 'закрыть дверь' },
+                { chinese: '木门', english: 'wooden door', russian: 'деревянная дверь' },
+                { chinese: '本子', english: 'notebook', russian: 'тетрадь' },
+                { chinese: '一本书', english: 'a book', russian: 'одна книга' },
+                { chinese: '不是', english: 'is not', russian: 'не является' },
+                { chinese: '不好', english: 'not good', russian: 'не хорошо' },
+                { chinese: '中文', english: 'Chinese language', russian: 'китайский язык' },
+                { chinese: '英文', english: 'English language', russian: 'английский язык' },
+                { chinese: '多少', english: 'how much/many', russian: 'сколько' },
+                { chinese: '很少', english: 'very few', russian: 'очень мало' },
+                { chinese: '来中国', english: 'come to China', russian: 'приехать в Китай' },
+                { chinese: '来北京', english: 'come to Beijing', russian: 'приехать в Пекин' },
+                { chinese: '走路', english: 'walk', russian: 'ходить пешком' },
+                { chinese: '作业', english: 'homework', russian: 'домашнее задание' },
+                { chinese: '火车', english: 'train', russian: 'поезд' },
+                { chinese: '一斤', english: 'one jin (500g)', russian: 'один цзинь (500г)' },
+                { chinese: '八斤', english: 'eight jin', russian: 'восемь цзиней' },
+                { chinese: '今年', english: 'this year', russian: 'в этом году' },
+                { chinese: '明年', english: 'next year', russian: 'в следующем году' },
+                { chinese: '头发', english: 'hair', russian: 'волосы' },
+                { chinese: '电话卡', english: 'phone card', russian: 'телефонная карта' },
+                { chinese: '一张卡', english: 'one card', russian: 'одна карта' },
+                { chinese: '一共', english: 'altogether', russian: 'всего' }
+            ]
+        };
 
-/** =======================
- *  Data (L1 & L2 from screenshots)
- *  You can freely edit/extend this list.
- *  id must be unique; mastery saved by id.
- *  ======================= */
-const L1 = [
-  { id: "l1-一个", zh: "一个", en: "one; a/an", ru: "один; один (одно/одна)" },
-  { id: "l1-一天", zh: "一天", en: "one day", ru: "один день" },
-  { id: "l1-二十", zh: "二十", en: "twenty", ru: "двадцать" },
-  { id: "l1-十二", zh: "十二", en: "twelve", ru: "двенадцать" },
-  { id: "l1-三十", zh: "三十", en: "thirty", ru: "тридцать" },
-  { id: "l1-十三", zh: "十三", en: "thirteen", ru: "тринадцать" },
-  { id: "l1-十一", zh: "十一", en: "eleven", ru: "одиннадцать" },
-  { id: "l1-三十二", zh: "三十二", en: "thirty-two", ru: "тридцать два" },
-  { id: "l1-上午", zh: "上午", en: "morning (a.m.)", ru: "утро; до полудня" },
-  { id: "l1-上课", zh: "上课", en: "have class; start class", ru: "идти на урок; начинать урок" },
-  { id: "l1-一千", zh: "一千", en: "one thousand", ru: "тысяча" },
-  { id: "l1-三千", zh: "三千", en: "three thousand", ru: "три тысячи" },
-  { id: "l1-下午", zh: "下午", en: "afternoon (p.m.)", ru: "день; после полудня" },
-  { id: "l1-学生", zh: "学生", en: "student", ru: "студент; ученик" },
-  { id: "l1-一个学生", zh: "一个学生", en: "one student", ru: "один студент/ученик" },
-  { id: "l1-十八", zh: "十八", en: "eighteen", ru: "восемнадцать" },
-  { id: "l1-八十", zh: "八十", en: "eighty", ru: "восемьдесят" },
-  { id: "l1-一个人", zh: "一个人", en: "one person; alone", ru: "один человек; в одиночку" },
-  { id: "l1-中国人", zh: "中国人", en: "Chinese (person)", ru: "китаец/китаянка" },
-  { id: "l1-八个学生", zh: "八个学生", en: "eight students", ru: "восемь студентов" },
-  { id: "l1-三个中国人", zh: "三个中国人", en: "three Chinese people", ru: "трое китайцев" },
-  { id: "l1-今天", zh: "今天", en: "today", ru: "сегодня" },
-  { id: "l1-明天", zh: "明天", en: "tomorrow", ru: "завтра" },
-  { id: "l1-下课", zh: "下课", en: "finish class", ru: "заканчивать урок" },
-  { id: "l1-六十", zh: "六十", en: "sixty", ru: "шестьдесят" },
-  { id: "l1-六千", zh: "六千", en: "six thousand", ru: "шесть тысяч" },
-  { id: "l1-学习", zh: "学习", en: "study; learn", ru: "учиться; изучать" },
-];
+        // Speech synthesis function
+        const speakText = (text, lang = 'zh-CN') => {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = lang;
+                utterance.rate = 0.8;
+                window.speechSynthesis.speak(utterance);
+            }
+        };
 
-const L2 = [
-  { id: "l2-工人", zh: "工人", en: "worker", ru: "рабочий" },
-  { id: "l2-工作", zh: "工作", en: "work; job", ru: "работать; работа" },
-  { id: "l2-干什么", zh: "干什么", en: "do what? what for?", ru: "что делать? зачем?" },
-  { id: "l2-土豆", zh: "土豆", en: "potato", ru: "картофель" },
-  { id: "l2-王老师", zh: "王老师", en: "Teacher Wang", ru: "учитель Ван" },
-  { id: "l2-我姓王", zh: "我姓王", en: "My surname is Wang", ru: "Моя фамилия Ван" },
-  { id: "l2-牛奶", zh: "牛奶", en: "milk", ru: "молоко" },
-  { id: "l2-牛肉", zh: "牛肉", en: "beef", ru: "говядина" },
-  { id: "l2-工厂", zh: "工厂", en: "factory", ru: "фабрика; завод" },
-  { id: "l2-广告", zh: "广告", en: "advertisement", ru: "реклама" },
-  { id: "l2-大学", zh: "大学", en: "university", ru: "университет" },
-  { id: "l2-太好了", zh: "太好了", en: "Great! Awesome!", ru: "Здорово! Отлично!" },
-  { id: "l2-开门", zh: "开门", en: "open the door", ru: "открывать дверь" },
-  { id: "l2-开始", zh: "开始", en: "start; begin", ru: "начинать(ся)" },
-  { id: "l2-关门", zh: "关门", en: "close the door", ru: "закрывать дверь" },
-  { id: "l2-木门", zh: "木门", en: "wooden door", ru: "деревянная дверь" },
-  { id: "l2-本子", zh: "本子", en: "notebook", ru: "тетрадь" },
-  { id: "l2-一本书", zh: "一本书", en: "one book", ru: "одна книга" },
-  { id: "l2-不是", zh: "不是", en: "to not be", ru: "не являться" },
-  { id: "l2-不好", zh: "不好", en: "not good", ru: "плохо; не хороший" },
-  { id: "l2-中文", zh: "中文", en: "Chinese (language)", ru: "китайский язык" },
-  { id: "l2-英文", zh: "英文", en: "English (language)", ru: "английский язык" },
-  { id: "l2-多少", zh: "多少", en: "how many/much", ru: "сколько" },
-  { id: "l2-很少", zh: "很少", en: "very few; seldom", ru: "очень мало; редко" },
-  { id: "l2-来中国", zh: "来中国", en: "come to China", ru: "приехать в Китай" },
-  { id: "l2-来北京", zh: "来北京", en: "come to Beijing", ru: "приехать в Пекин" },
-  { id: "l2-走路", zh: "走路", en: "walk; on foot", ru: "идти пешком" },
-  { id: "l2-作业", zh: "作业", en: "homework", ru: "домашнее задание" },
-  { id: "l2-火车", zh: "火车", en: "train", ru: "поезд" },
-  { id: "l2-一斤", zh: "一斤", en: "one jin (≈500g)", ru: "один цзинь (≈500 г)" },
-  { id: "l2-八斤", zh: "八斤", en: "eight jin (≈4 kg)", ru: "восемь цзиней (≈4 кг)" },
-  { id: "l2-今年", zh: "今年", en: "this year", ru: "в этом году" },
-  { id: "l2-明年", zh: "明年", en: "next year", ru: "в следующем году" },
-  { id: "l2-头发", zh: "头发", en: "hair (on head)", ru: "волосы" },
-  { id: "l2-电话卡", zh: "电话卡", en: "SIM/phone card", ru: "телефонная SIM-карта" },
-  { id: "l2-一张卡", zh: "一张卡", en: "one card", ru: "одна карточка" },
-  { id: "l2-一共", zh: "一共", en: "in total; altogether", ru: "всего; итого" },
-];
+        // Main App Component
+        function App() {
+            const [mode, setMode] = useState('flashcard'); // flashcard, quiz, typeit, minigame, wordlist
+            const [currentDeck, setCurrentDeck] = useState('L1-2');
+            const [progress, setProgress] = useState({});
+            
+            // Load progress from localStorage on initial render
+            useEffect(() => {
+                const savedProgress = localStorage.getItem('chineseLearningProgress');
+                if (savedProgress) {
+                    setProgress(JSON.parse(savedProgress));
+                }
+            }, []);
+            
+            // Save progress to localStorage whenever it changes
+            useEffect(() => {
+                localStorage.setItem('chineseLearningProgress', JSON.stringify(progress));
+            }, [progress]);
+            
+            // Update progress for a word
+            const updateProgress = (word, mastery) => {
+                setProgress(prev => ({
+                    ...prev,
+                    [word]: mastery
+                }));
+            };
+            
+            // Reset progress
+            const resetProgress = () => {
+                if (window.confirm('Are you sure you want to reset all progress?')) {
+                    setProgress({});
+                }
+            };
+            
+            // Calculate stats
+            const stats = {
+                total: wordData[currentDeck].length,
+                mastered: Object.values(progress).filter(level => level >= 4).length,
+                learning: Object.values(progress).filter(level => level > 0 && level < 4).length,
+                new: Object.values(progress).filter(level => level === 0 || !level).length
+            };
+            
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100">
+                    {/* Header */}
+                    <header className="bg-green-600 text-white p-4 shadow-md">
+                        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center">
+                            <h1 className="text-2xl font-bold mb-2 md:mb-0">Chinese Character Learning</h1>
+                            <div className="flex items-center space-x-4">
+                                <DeckSelector 
+                                    currentDeck={currentDeck} 
+                                    setCurrentDeck={setCurrentDeck} 
+                                />
+                                <ProgressStats stats={stats} />
+                            </div>
+                        </div>
+                    </header>
+                    
+                    {/* Navigation */}
+                    <nav className="bg-white shadow-sm py-3">
+                        <div className="container mx-auto flex flex-wrap justify-center">
+                            <ModeButton 
+                                mode="flashcard" 
+                                currentMode={mode} 
+                                setMode={setMode} 
+                                label="Flashcards" 
+                            />
+                            <ModeButton 
+                                mode="quiz" 
+                                currentMode={mode} 
+                                setMode={setMode} 
+                                label="Quiz" 
+                            />
+                            <ModeButton 
+                                mode="typeit" 
+                                currentMode={mode} 
+                                setMode={setMode} 
+                                label="Type It" 
+                            />
+                            <ModeButton 
+                                mode="minigame" 
+                                currentMode={mode} 
+                                setMode={setMode} 
+                                label="Mini Game" 
+                            />
+                            <ModeButton 
+                                mode="wordlist" 
+                                currentMode={mode} 
+                                setMode={setMode} 
+                                label="Word List" 
+                            />
+                        </div>
+                    </nav>
+                    
+                    {/* Main Content */}
+                    <main className="container mx-auto p-4">
+                        {mode === 'flashcard' && (
+                            <FlashcardMode 
+                                deck={wordData[currentDeck]} 
+                                progress={progress} 
+                                updateProgress={updateProgress} 
+                            />
+                        )}
+                        
+                        {mode === 'quiz' && (
+                            <QuizMode 
+                                deck={wordData[currentDeck]} 
+                                progress={progress} 
+                                updateProgress={updateProgress} 
+                            />
+                        )}
+                        
+                        {mode === 'typeit' && (
+                            <TypeItMode 
+                                deck={wordData[currentDeck]} 
+                                progress={progress} 
+                                updateProgress={updateProgress} 
+                            />
+                        )}
+                        
+                        {mode === 'minigame' && (
+                            <MiniGameMode 
+                                deck={wordData[currentDeck]} 
+                                progress={progress} 
+                                updateProgress={updateProgress} 
+                            />
+                        )}
+                        
+                        {mode === 'wordlist' && (
+                            <WordListMode 
+                                deck={wordData[currentDeck]} 
+                                progress={progress} 
+                            />
+                        )}
+                    </main>
+                    
+                    {/* Footer */}
+                    <footer className="bg-green-800 text-white p-4 mt-8">
+                        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center">
+                            <p>Chinese Learning App &copy; {new Date().getFullYear()}</p>
+                            <button 
+                                onClick={resetProgress}
+                                className="mt-2 md:mt-0 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+                            >
+                                Reset Progress
+                            </button>
+                        </div>
+                    </footer>
+                </div>
+            );
+        }
 
-const ALL = [...L1, ...L2];
+        // Deck Selector Component
+        function DeckSelector({ currentDeck, setCurrentDeck }) {
+            return (
+                <div className="flex items-center">
+                    <span className="mr-2">Deck:</span>
+                    <select 
+                        value={currentDeck} 
+                        onChange={(e) => setCurrentDeck(e.target.value)}
+                        className="bg-green-700 text-white px-2 py-1 rounded"
+                    >
+                        <option value="L1-2">L1-2</option>
+                        <option value="L1">L1</option>
+                        <option value="L2">L2</option>
+                    </select>
+                </div>
+            );
+        }
 
-/** =======================
- *  Persistence
- *  ======================= */
-const STORAGE_KEY = "ecc-l1l2-progress-v1";
-function loadProgress() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-  catch { return {}; }
-}
-function saveProgress(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
+        // Progress Stats Component
+        function ProgressStats({ stats }) {
+            const percentage = Math.round((stats.mastered / stats.total) * 100);
+            
+            return (
+                <div className="flex items-center">
+                    <div className="mr-4 text-center">
+                        <div className="text-lg font-bold">{stats.mastered}/{stats.total}</div>
+                        <div className="text-xs">Mastered</div>
+                    </div>
+                    <div className="w-24 bg-green-200 rounded-full h-2.5">
+                        <div 
+                            className="bg-green-700 h-2.5 rounded-full progress-bar" 
+                            style={{ width: `${percentage}%` }}
+                        ></div>
+                    </div>
+                    <span className="ml-2 text-sm">{percentage}%</span>
+                </div>
+            );
+        }
 
-/** =======================
- *  Core Components
- *  ======================= */
-function Header({deckName, mode, setMode, stats, onReset}) {
-  return (
-    <div className="sticky top-0 z-20 bg-[#f6fff8]/80 backdrop-blur border-b">
-      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 justify-between">
-        <div className="flex items-center gap-3">
-          <div className="text-2xl font-semibold text-green-700">字感练习 · ECC</div>
-          <span className="chip">Deck: {deckName}</span>
-          <span className="chip">Mastered: {stats.mastered}/{stats.total} ({stats.percent}%)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {["Flashcards","Quiz","Type-It","Mini-Game","List"].map(m=>(
-            <button key={m}
-                    className={"btn btn-soft "+(mode===m?"border-green-600":"")}
-                    onClick={()=>setMode(m)}>{m}</button>
-          ))}
-          <button className="btn btn-soft" onClick={onReset}>Reset</button>
-        </div>
-      </div>
-    </div>
-  )
-}
+        // Mode Button Component
+        function ModeButton({ mode, currentMode, setMode, label }) {
+            const isActive = mode === currentMode;
+            
+            return (
+                <button
+                    onClick={() => setMode(mode)}
+                    className={`mx-2 my-1 px-4 py-2 rounded-lg transition-colors ${
+                        isActive 
+                            ? 'bg-green-600 text-white' 
+                            : 'bg-green-100 text-green-800 hover:bg-green-200'
+                    }`}
+                >
+                    {label}
+                </button>
+            );
+        }
 
-function DeckPicker({deck, setDeck}) {
-  return (
-    <div className="max-w-6xl mx-auto px-4 pt-4 pb-2">
-      <div className="flex flex-wrap gap-2">
-        <button
-          className={"btn "+(deck==="ALL"?"btn-primary":"btn-soft")}
-          onClick={()=>setDeck("ALL")}
-        >L1 & L2（合并）</button>
-        <button
-          className={"btn "+(deck==="L1"?"btn-primary":"btn-soft")}
-          onClick={()=>setDeck("L1")}
-        >L1</button>
-        <button
-          className={"btn "+(deck==="L2"?"btn-primary":"btn-soft")}
-          onClick={()=>setDeck("L2")}
-        >L2</button>
-      </div>
-      <p className="text-xs text-gray-500 mt-2">
-        Hotkeys in Flashcards: <span class="kbd">Space</span> flip,
-        <span class="ml-1 kbd">K</span> knew,
-        <span class="ml-1 kbd">A</span> again,
-        <span class="ml-1 kbd">V</span> voice.
-      </p>
-    </div>
-  )
-}
+        // Flashcard Mode Component
+        function FlashcardMode({ deck, progress, updateProgress }) {
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [isFlipped, setIsFlipped] = useState(false);
+            const cardRef = useRef(null);
+            
+            // Keyboard shortcuts
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        setIsFlipped(!isFlipped);
+                    } else if (e.code === 'KeyK' && isFlipped) {
+                        // Knew it
+                        updateProgress(deck[currentIndex].chinese, Math.min(5, (progress[deck[currentIndex].chinese] || 0) + 1));
+                        nextCard();
+                    } else if (e.code === 'KeyA' && isFlipped) {
+                        // Again
+                        updateProgress(deck[currentIndex].chinese, Math.max(0, (progress[deck[currentIndex].chinese] || 0) - 1));
+                        nextCard();
+                    } else if (e.code === 'KeyV') {
+                        // Voice
+                        if (isFlipped) {
+                            speakText(deck[currentIndex].english, 'en-US');
+                        } else {
+                            speakText(deck[currentIndex].chinese);
+                        }
+                    }
+                };
+                
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [currentIndex, isFlipped, deck, progress, updateProgress]);
+            
+            const nextCard = () => {
+                setIsFlipped(false);
+                setCurrentIndex((prevIndex) => (prevIndex + 1) % deck.length);
+            };
+            
+            const prevCard = () => {
+                setIsFlipped(false);
+                setCurrentIndex((prevIndex) => (prevIndex - 1 + deck.length) % deck.length);
+            };
+            
+            const masteryLevel = progress[deck[currentIndex]?.chinese] || 0;
+            
+            return (
+                <div className="max-w-2xl mx-auto">
+                    <div className="mb-4 flex justify-between items-center">
+                        <button 
+                            onClick={prevCard}
+                            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                        >
+                            Previous
+                        </button>
+                        <div className="text-center">
+                            <span className="font-bold">{currentIndex + 1}</span> / {deck.length}
+                            <div className="flex justify-center mt-1">
+                                {[1, 2, 3, 4, 5].map((level) => (
+                                    <div 
+                                        key={level}
+                                        className={`w-4 h-4 mx-1 rounded-full ${
+                                            level <= masteryLevel ? 'bg-green-500' : 'bg-gray-300'
+                                        }`}
+                                    ></div>
+                                ))}
+                            </div>
+                        </div>
+                        <button 
+                            onClick={nextCard}
+                            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                        >
+                            Next
+                        </button>
+                    </div>
+                    
+                    <div 
+                        ref={cardRef}
+                        className={`card relative w-full h-64 cursor-pointer ${isFlipped ? 'flipped' : ''}`}
+                        onClick={() => setIsFlipped(!isFlipped)}
+                    >
+                        <div className="card-front bg-white rounded-xl shadow-lg flex flex-col justify-center items-center p-6">
+                            <div className="text-4xl font-bold text-green-800 mb-4">
+                                {deck[currentIndex]?.chinese}
+                            </div>
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    speakText(deck[currentIndex].chinese);
+                                }}
+                                className="px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition-colors"
+                            >
+                                🔊 Speak
+                            </button>
+                            <div className="mt-4 text-sm text-gray-500">
+                                Click or press Space to flip
+                            </div>
+                        </div>
+                        
+                        <div className="card-back bg-green-100 rounded-xl shadow-lg flex flex-col justify-center items-center p-6">
+                            <div className="text-2xl font-bold text-green-800 mb-2">
+                                {deck[currentIndex]?.english}
+                            </div>
+                            <div className="text-lg text-gray-700 mb-4">
+                                {deck[currentIndex]?.russian}
+                            </div>
+                            <div className="flex space-x-2">
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        speakText(deck[currentIndex].english, 'en-US');
+                                    }}
+                                    className="px-3 py-1 bg-white text-green-800 rounded-lg hover:bg-green-200 transition-colors"
+                                >
+                                    🔊 EN
+                                </button>
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateProgress(deck[currentIndex].chinese, Math.min(5, (progress[deck[currentIndex].chinese] || 0) + 1));
+                                        nextCard();
+                                    }}
+                                    className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                                >
+                                    Knew It (K)
+                                </button>
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateProgress(deck[currentIndex].chinese, Math.max(0, (progress[deck[currentIndex].chinese] || 0) - 1));
+                                        nextCard();
+                                    }}
+                                    className="px-3 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+                                >
+                                    Again (A)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="mt-6 text-center text-sm text-gray-600">
+                        <p>Keyboard shortcuts: Space = Flip, K = Knew It, A = Again, V = Voice</p>
+                    </div>
+                </div>
+            );
+        }
 
-/** ---------- Flashcards ---------- */
-function Flashcards({items, progress, updateProgress}) {
-  const [i, setI] = React.useState(0);
-  const [showBack, setShowBack] = React.useState(false);
+        // Quiz Mode Component
+        function QuizMode({ deck, progress, updateProgress }) {
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [options, setOptions] = useState([]);
+            const [selectedOption, setSelectedOption] = useState(null);
+            const [showResult, setShowResult] = useState(false);
+            const [score, setScore] = useState(0);
+            
+            // Initialize quiz
+            useEffect(() => {
+                if (deck.length > 0) {
+                    generateOptions(currentIndex);
+                }
+            }, [deck, currentIndex]);
+            
+            const generateOptions = (index) => {
+                if (deck.length < 4) return;
+                
+                const correctAnswer = deck[index].chinese;
+                const wrongAnswers = deck
+                    .filter((_, i) => i !== index)
+                    .sort(() => 0.5 - Math.random())
+                    .slice(0, 3)
+                    .map(item => item.chinese);
+                
+                const allOptions = [correctAnswer, ...wrongAnswers].sort(() => 0.5 - Math.random());
+                setOptions(allOptions);
+            };
+            
+            const handleAnswer = (option) => {
+                if (showResult) return;
+                
+                setSelectedOption(option);
+                setShowResult(true);
+                
+                const isCorrect = option === deck[currentIndex].chinese;
+                if (isCorrect) {
+                    setScore(score + 1);
+                    updateProgress(deck[currentIndex].chinese, Math.min(5, (progress[deck[currentIndex].chinese] || 0) + 1));
+                } else {
+                    updateProgress(deck[currentIndex].chinese, Math.max(0, (progress[deck[currentIndex].chinese] || 0) - 1));
+                }
+                
+                // Auto-advance after 1.5 seconds
+                setTimeout(() => {
+                    nextQuestion();
+                }, 1500);
+            };
+            
+            const nextQuestion = () => {
+                setSelectedOption(null);
+                setShowResult(false);
+                setCurrentIndex((prevIndex) => (prevIndex + 1) % deck.length);
+            };
+            
+            if (deck.length < 4) {
+                return (
+                    <div className="text-center p-8 bg-white rounded-xl shadow-lg">
+                        <p className="text-lg">Not enough words in this deck for a quiz. Need at least 4 words.</p>
+                    </div>
+                );
+            }
+            
+            return (
+                <div className="max-w-2xl mx-auto">
+                    <div className="mb-6 text-center">
+                        <h2 className="text-2xl font-bold text-green-800 mb-2">Multiple Choice Quiz</h2>
+                        <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow">
+                            <div>
+                                Question: <span className="font-bold">{currentIndex + 1}</span> / {deck.length}
+                            </div>
+                            <div>
+                                Score: <span className="font-bold">{score}</span> / {deck.length}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+                        <div className="text-center mb-6">
+                            <div className="text-lg text-gray-700 mb-2">
+                                What is the Chinese character for:
+                            </div>
+                            <div className="text-2xl font-bold text-green-800">
+                                {deck[currentIndex]?.english}
+                            </div>
+                            <div className="text-lg text-gray-600 mt-1">
+                                {deck[currentIndex]?.russian}
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {options.map((option, index) => {
+                                const isCorrect = option === deck[currentIndex].chinese;
+                                const isSelected = selectedOption === option;
+                                let buttonClass = "p-4 text-lg rounded-lg transition-colors ";
+                                
+                                if (showResult) {
+                                    if (isCorrect) {
+                                        buttonClass += "bg-green-500 text-white pulse-success";
+                                    } else if (isSelected) {
+                                        buttonClass += "bg-red-500 text-white";
+                                    } else {
+                                        buttonClass += "bg-gray-200 text-gray-700";
+                                    }
+                                } else {
+                                    buttonClass += "bg-green-100 text-green-800 hover:bg-green-200";
+                                }
+                                
+                                return (
+                                    <button
+                                        key={index}
+                                        className={buttonClass}
+                                        onClick={() => handleAnswer(option)}
+                                        disabled={showResult}
+                                    >
+                                        {option}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    
+                    {showResult && (
+                        <div className="text-center">
+                            <button 
+                                onClick={nextQuestion}
+                                className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                            >
+                                Next Question
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
 
-  const card = items[i];
+        // Type It Mode Component
+        function TypeItMode({ deck, progress, updateProgress }) {
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [userInput, setUserInput] = useState('');
+            const [showResult, setShowResult] = useState(false);
+            const [isCorrect, setIsCorrect] = useState(false);
+            const inputRef = useRef(null);
+            
+            useEffect(() => {
+                if (inputRef.current) {
+                    inputRef.current.focus();
+                }
+            }, [currentIndex]);
+            
+            const checkAnswer = () => {
+                if (userInput.trim() === '') return;
+                
+                const correct = userInput.trim() === deck[currentIndex].chinese;
+                setIsCorrect(correct);
+                setShowResult(true);
+                
+                if (correct) {
+                    updateProgress(deck[currentIndex].chinese, Math.min(5, (progress[deck[currentIndex].chinese] || 0) + 1));
+                } else {
+                    updateProgress(deck[currentIndex].chinese, Math.max(0, (progress[deck[currentIndex].chinese] || 0) - 1));
+                }
+            };
+            
+            const nextWord = () => {
+                setUserInput('');
+                setShowResult(false);
+                setCurrentIndex((prevIndex) => (prevIndex + 1) % deck.length);
+            };
+            
+            const handleKeyPress = (e) => {
+                if (e.key === 'Enter') {
+                    if (showResult) {
+                        nextWord();
+                    } else {
+                        checkAnswer();
+                    }
+                }
+            };
+            
+            return (
+                <div className="max-w-2xl mx-auto">
+                    <div className="mb-6 text-center">
+                        <h2 className="text-2xl font-bold text-green-800 mb-2">Type the Chinese Characters</h2>
+                        <div className="bg-white p-4 rounded-lg shadow inline-block">
+                            Question: <span className="font-bold">{currentIndex + 1}</span> / {deck.length}
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+                        <div className="text-center mb-6">
+                            <div className="text-lg text-gray-700 mb-2">
+                                Type the Chinese characters for:
+                            </div>
+                            <div className="text-2xl font-bold text-green-800">
+                                {deck[currentIndex]?.english}
+                            </div>
+                            <div className="text-lg text-gray-600 mt-1">
+                                {deck[currentIndex]?.russian}
+                            </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-center">
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={userInput}
+                                onChange={(e) => setUserInput(e.target.value)}
+                                onKeyPress={handleKeyPress}
+                                className="w-full max-w-md p-4 text-xl border-2 border-green-300 rounded-lg focus:outline-none focus:border-green-500 text-center"
+                                placeholder="Type here..."
+                                disabled={showResult}
+                            />
+                            
+                            {showResult && (
+                                <div className={`mt-4 p-4 rounded-lg ${isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                    {isCorrect ? (
+                                        <div className="text-center">
+                                            <div className="text-2xl font-bold">Correct!</div>
+                                            <div className="text-lg mt-2">{deck[currentIndex]?.chinese}</div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center">
+                                            <div className="text-xl font-bold">Incorrect</div>
+                                            <div className="mt-2">
+                                                The correct answer is: <span className="font-bold text-lg">{deck[currentIndex]?.chinese}</span>
+                                            </div>
+                                            <div className="mt-2">Your answer: {userInput}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className="text-center">
+                        {!showResult ? (
+                            <button 
+                                onClick={checkAnswer}
+                                className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                            >
+                                Check Answer
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={nextWord}
+                                className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                            >
+                                Next Word
+                            </button>
+                        )}
+                    </div>
+                    
+                    <div className="mt-6 text-center text-sm text-gray-600">
+                        <p>Press Enter to check your answer or move to the next word</p>
+                    </div>
+                </div>
+            );
+        }
 
-  React.useEffect(()=>{
-    const handler = (e)=>{
-      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-      if (e.code === "Space") { e.preventDefault(); setShowBack(s=>!s); }
-      if (e.key.toLowerCase() === "k") knew();
-      if (e.key.toLowerCase() === "a") again();
-      if (e.key.toLowerCase() === "v") speakNow();
-    };
-    window.addEventListener("keydown", handler);
-    return ()=>window.removeEventListener("keydown", handler);
-  }, [i, showBack, items]);
+        // Mini Game Mode Component
+        function MiniGameMode({ deck, progress, updateProgress }) {
+            const [gameState, setGameState] = useState('setup'); // setup, playing, result
+            const [pairs, setPairs] = useState([]);
+            const [selectedTile, setSelectedTile] = useState(null);
+            const [matchedPairs, setMatchedPairs] = useState([]);
+            const [moves, setMoves] = useState(0);
+            
+            // Initialize game
+            useEffect(() => {
+                if (gameState === 'setup' && deck.length >= 4) {
+                    startGame();
+                }
+            }, [deck, gameState]);
+            
+            const startGame = () => {
+                // Select 8 random words (4 pairs)
+                const selectedWords = [...deck]
+                    .sort(() => 0.5 - Math.random())
+                    .slice(0, 4);
+                
+                // Create pairs: Chinese and English
+                const newPairs = [];
+                selectedWords.forEach(word => {
+                    newPairs.push(
+                        { id: `${word.chinese}-ch`, content: word.chinese, type: 'chinese', pairId: word.chinese },
+                        { id: `${word.chinese}-en`, content: word.english, type: 'english', pairId: word.chinese }
+                    );
+                });
+                
+                // Shuffle the pairs
+                setPairs(newPairs.sort(() => 0.5 - Math.random()));
+                setMatchedPairs([]);
+                setMoves(0);
+                setGameState('playing');
+            };
+            
+            const handleTileClick = (tile) => {
+                if (selectedTile === tile || matchedPairs.includes(tile.pairId)) {
+                    return;
+                }
+                
+                if (!selectedTile) {
+                    setSelectedTile(tile);
+                    return;
+                }
+                
+                setMoves(moves + 1);
+                
+                // Check if tiles match
+                if (selectedTile.pairId === tile.pairId) {
+                    // Match found
+                    setMatchedPairs([...matchedPairs, tile.pairId]);
+                    setSelectedTile(null);
+                    
+                    // Update progress for matched word
+                    updateProgress(tile.pairId, Math.min(5, (progress[tile.pairId] || 0) + 1));
+                    
+                    // Speak the word
+                    speakText(tile.pairId);
+                    
+                    // Check if game is complete
+                    if (matchedPairs.length + 1 === 4) {
+                        setTimeout(() => {
+                            setGameState('result');
+                        }, 1000);
+                    }
+                } else {
+                    // No match
+                    setTimeout(() => {
+                        setSelectedTile(null);
+                    }, 1000);
+                }
+            };
+            
+            if (deck.length < 4) {
+                return (
+                    <div className="text-center p-8 bg-white rounded-xl shadow-lg">
+                        <p className="text-lg">Not enough words in this deck for the game. Need at least 4 words.</p>
+                    </div>
+                );
+            }
+            
+            return (
+                <div className="max-w-4xl mx-auto">
+                    <div className="mb-6 text-center">
+                        <h2 className="text-2xl font-bold text-green-800 mb-2">Matching Game</h2>
+                        <p className="text-gray-700">Match Chinese characters with their English translations</p>
+                        
+                        {gameState === 'playing' && (
+                            <div className="mt-4 bg-white p-4 rounded-lg shadow inline-block">
+                                Moves: <span className="font-bold">{moves}</span> | 
+                                Matched: <span className="font-bold">{matchedPairs.length}</span> / 4
+                            </div>
+                        )}
+                    </div>
+                    
+                    {gameState === 'setup' && (
+                        <div className="text-center">
+                            <button 
+                                onClick={startGame}
+                                className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-xl"
+                            >
+                                Start Game
+                            </button>
+                        </div>
+                    )}
+                    
+                    {gameState === 'playing' && (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {pairs.map(tile => {
+                                const isSelected = selectedTile?.id === tile.id;
+                                const isMatched = matchedPairs.includes(tile.pairId);
+                                
+                                let tileClass = "game-tile p-4 rounded-lg shadow-lg flex items-center justify-center text-center min-h-24 cursor-pointer transition-all ";
+                                
+                                if (isMatched) {
+                                    tileClass += "bg-green-500 text-white transform scale-95";
+                                } else if (isSelected) {
+                                    tileClass += tile.type === 'chinese' 
+                                        ? "bg-blue-500 text-white" 
+                                        : "bg-yellow-500 text-white";
+                                } else {
+                                    tileClass += "bg-white text-gray-800 hover:bg-gray-100";
+                                }
+                                
+                                return (
+                                    <div
+                                        key={tile.id}
+                                        className={tileClass}
+                                        onClick={() => handleTileClick(tile)}
+                                    >
+                                        <div className="font-bold text-lg">
+                                            {tile.content}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                    
+                    {gameState === 'result' && (
+                        <div className="text-center bg-white rounded-xl shadow-lg p-8">
+                            <div className="text-3xl font-bold text-green-800 mb-4">Game Complete!</div>
+                            <div className="text-xl mb-6">
+                                You matched all pairs in <span className="font-bold">{moves}</span> moves!
+                            </div>
+                            <button 
+                                onClick={() => setGameState('setup')}
+                                className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-xl"
+                            >
+                                Play Again
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
 
-  const next = () => {
-    setShowBack(false);
-    setI((i+1) % items.length);
-  };
-  const prev = () => {
-    setShowBack(false);
-    setI((i-1+items.length) % items.length);
-  };
+        // Word List Mode Component
+        function WordListMode({ deck, progress }) {
+            const [filter, setFilter] = useState('all'); // all, mastered, learning, new
+            
+            const filteredDeck = deck.filter(word => {
+                const mastery = progress[word.chinese] || 0;
+                
+                if (filter === 'all') return true;
+                if (filter === 'mastered') return mastery >= 4;
+                if (filter === 'learning') return mastery > 0 && mastery < 4;
+                if (filter === 'new') return mastery === 0;
+                
+                return true;
+            });
+            
+            return (
+                <div className="max-w-6xl mx-auto">
+                    <div className="mb-6 flex flex-col md:flex-row justify-between items-center">
+                        <h2 className="text-2xl font-bold text-green-800 mb-4 md:mb-0">Word List</h2>
+                        
+                        <div className="flex space-x-2">
+                            <FilterButton 
+                                filter="all" 
+                                currentFilter={filter} 
+                                setFilter={setFilter} 
+                                label="All Words" 
+                            />
+                            <FilterButton 
+                                filter="new" 
+                                currentFilter={filter} 
+                                setFilter={setFilter} 
+                                label="New" 
+                            />
+                            <FilterButton 
+                                filter="learning" 
+                                currentFilter={filter} 
+                                setFilter={setFilter} 
+                                label="Learning" 
+                            />
+                            <FilterButton 
+                                filter="mastered" 
+                                currentFilter={filter} 
+                                setFilter={setFilter} 
+                                label="Mastered" 
+                            />
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredDeck.map((word, index) => {
+                            const mastery = progress[word.chinese] || 0;
+                            
+                            let bgColor = 'bg-white';
+                            if (mastery >= 4) bgColor = 'bg-green-100';
+                            else if (mastery > 0) bgColor = 'bg-yellow-100';
+                            
+                            return (
+                                <div 
+                                    key={index}
+                                    className={`word-card ${bgColor} rounded-xl shadow p-4 flex flex-col`}
+                                >
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div 
+                                            className="text-2xl font-bold text-green-800 cursor-pointer"
+                                            onClick={() => speakText(word.chinese)}
+                                        >
+                                            {word.chinese}
+                                        </div>
+                                        <div className="flex">
+                                            {[1, 2, 3, 4, 5].map(level => (
+                                                <div 
+                                                    key={level}
+                                                    className={`w-3 h-3 mx-0.5 rounded-full ${
+                                                        level <= mastery ? 'bg-green-500' : 'bg-gray-300'
+                                                    }`}
+                                                ></div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="text-lg text-gray-700 mb-1">
+                                        {word.english}
+                                    </div>
+                                    
+                                    <div className="text-gray-600">
+                                        {word.russian}
+                                    </div>
+                                    
+                                    <div className="mt-2 flex space-x-2">
+                                        <button 
+                                            onClick={() => speakText(word.chinese)}
+                                            className="px-2 py-1 bg-green-200 text-green-800 rounded text-sm hover:bg-green-300 transition-colors"
+                                        >
+                                            🔊 CN
+                                        </button>
+                                        <button 
+                                            onClick={() => speakText(word.english, 'en-US')}
+                                            className="px-2 py-1 bg-blue-200 text-blue-800 rounded text-sm hover:bg-blue-300 transition-colors"
+                                        >
+                                            🔊 EN
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    
+                    {filteredDeck.length === 0 && (
+                        <div className="text-center p-8 bg-white rounded-xl shadow-lg">
+                            <p className="text-lg">No words match the selected filter.</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
 
-  const mastery = progress[card.id]?.m ?? 0;
+        // Filter Button Component for Word List
+        function FilterButton({ filter, currentFilter, setFilter, label }) {
+            const isActive = filter === currentFilter;
+            
+            return (
+                <button
+                    onClick={() => setFilter(filter)}
+                    className={`px-3 py-1 rounded-lg transition-colors ${
+                        isActive 
+                            ? 'bg-green-600 text-white' 
+                            : 'bg-green-100 text-green-800 hover:bg-green-200'
+                    }`}
+                >
+                    {label}
+                </button>
+            );
+        }
 
-  const knew = () => {
-    const m = Math.min(5, mastery + 1);
-    updateProgress(card.id, m);
-    next();
-  };
-  const again = () => {
-    const m = Math.max(0, mastery - 1);
-    updateProgress(card.id, m);
-  };
-  const speakNow = () => speak(card.zh, 'zh-CN');
-
-  return (
-    <div className="max-w-4xl mx-auto p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-sm text-gray-500">Card {i+1}/{items.length}</div>
-        <div className="flex gap-1 items-center">
-          <span className="chip">Mastery: {mastery}/5</span>
-        </div>
-      </div>
-      <div className="card p-6 md:p-10 text-center select-none">
-        <div className="text-sm text-gray-400 mb-2">{showBack? "Meaning":"Chinese"}</div>
-        <div className={"font-bold "+(showBack?"text-2xl":"text-6xl md:text-7xl")}>
-          {showBack
-            ? (<div>
-                <div className="text-2xl">{card.en}</div>
-                <div className="text-gray-500 mt-1">{card.ru}</div>
-              </div>)
-            : card.zh}
-        </div>
-
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button className="btn btn-soft" onClick={prev}>← Prev</button>
-          <button className="btn btn-soft" onClick={()=>setShowBack(s=>!s)}>Flip (Space)</button>
-          <button className="btn btn-soft" onClick={speakNow}>🔊 Voice (V)</button>
-          <button className="btn btn-soft" onClick={again}>Again (A)</button>
-          <button className="btn btn-primary" onClick={knew}>Knew (K)</button>
-          <button className="btn btn-soft" onClick={next}>Next →</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** ---------- Quiz (MCQ) ---------- */
-function Quiz({items, updateProgress}) {
-  const makeQ = () => {
-    const correct = sample(items);
-    const wrongs = shuffle(items.filter(w => w.id !== correct.id)).slice(0,3);
-    const opts = shuffle([correct, ...wrongs]);
-    return { correct, opts };
-  };
-  const [q, setQ] = React.useState(makeQ());
-  const [picked, setPicked] = React.useState(null);
-
-  const choose = (opt) => {
-    setPicked(opt.id);
-    if (opt.id === q.correct.id) {
-      updateProgress(q.correct.id, "+1");
-      speak(q.correct.zh, 'zh-CN');
-      setTimeout(()=>{ setPicked(null); setQ(makeQ()); }, 600);
-    } else {
-      updateProgress(q.correct.id, "-1");
-    }
-  };
-
-  return (
-    <div className="max-w-4xl mx-auto p-4">
-      <div className="card p-6 md:p-8">
-        <div className="text-center text-sm text-gray-500 mb-2">Choose the correct meaning</div>
-        <div className="text-center text-5xl md:text-6xl font-bold mb-6">{q.correct.zh}</div>
-        <div className="grid md:grid-cols-2 gap-3">
-          {q.opts.map(opt=>(
-            <button key={opt.id}
-              onClick={()=>choose(opt)}
-              className={
-                "btn btn-soft justify-start text-left " +
-                (picked && opt.id===q.correct.id ? "border-green-600" : "") +
-                (picked && opt.id===picked && picked!==q.correct.id ? "border-red-400" : "")
-              }>
-              <div className="font-medium">{opt.en}</div>
-              <div className="text-xs text-gray-500">{opt.ru}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/** ---------- Type-It ---------- */
-function TypeIt({items, updateProgress}) {
-  const [i, setI] = React.useState(0);
-  const [val, setVal] = React.useState("");
-  const [ok, setOk] = React.useState(null);
-
-  const w = items[i];
-
-  const submit = (e) => {
-    e.preventDefault();
-    const correct = val.trim() === w.zh;
-    setOk(correct);
-    if (correct) {
-      updateProgress(w.id, "+1");
-      speak(w.zh, 'zh-CN');
-      setTimeout(()=>{
-        setI((i+1)%items.length);
-        setVal(""); setOk(null);
-      }, 500);
-    } else {
-      updateProgress(w.id, "-1");
-    }
-  };
-
-  return (
-    <div className="max-w-xl mx-auto p-4">
-      <div className="card p-6 md:p-8">
-        <div className="text-center text-sm text-gray-500 mb-1">Type the Chinese characters</div>
-        <div className="text-center font-semibold">{w.en}</div>
-        <div className="text-center text-gray-500 text-sm">{w.ru}</div>
-        <form onSubmit={submit} className="mt-5 flex gap-2">
-          <input className="flex-1 border rounded-xl px-3 py-2"
-                 placeholder="Type here in Chinese…"
-                 value={val} onChange={e=>setVal(e.target.value)} />
-          <button className="btn btn-primary">Check</button>
-        </form>
-        {ok===true && <div className="mt-3 text-green-700">✔ 正确！ {w.zh}</div>}
-        {ok===false && <div className="mt-3 text-red-600">✘ 再试一次～ 正确答案：{w.zh}</div>}
-      </div>
-    </div>
-  )
-}
-
-/** ---------- Mini Drag & Drop ---------- */
-function MiniGame({items, updateProgress}) {
-  const roundWords = React.useMemo(()=>shuffle(items).slice(0,6), [items]);
-  const [targets, setTargets] = React.useState(shuffle(roundWords));
-  const [done, setDone] = React.useState({}); // id -> matched?
-
-  const onDragStart = (e, id) => e.dataTransfer.setData("text/id", id);
-  const onDrop = (e, targetId) => {
-    const dragged = e.dataTransfer.getData("text/id");
-    if (!dragged) return;
-    if (dragged === targetId) {
-      setDone(d => ({...d, [targetId]: true}));
-      updateProgress(targetId, "+1");
-      const w = roundWords.find(x=>x.id===targetId);
-      speak(w.zh, 'zh-CN');
-    } else {
-      updateProgress(targetId, "-1");
-    }
-  };
-
-  const complete = Object.values(done).filter(Boolean).length === roundWords.length;
-
-  return (
-    <div className="max-w-5xl mx-auto p-4">
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="card p-4">
-          <div className="text-sm text-gray-500 mb-2">Drag these Chinese words</div>
-          <div className="flex flex-wrap gap-2">
-            {roundWords.map(w=>(
-              <div key={"drag-"+w.id}
-                   draggable={!done[w.id]}
-                   onDragStart={(e)=>onDragStart(e, w.id)}
-                   className={"px-3 py-2 rounded-xl border bg-white cursor-move select-none "+(done[w.id]?"opacity-40 line-through":"")}>
-                {w.zh}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card p-4">
-          <div className="text-sm text-gray-500 mb-2">Drop onto the matching meaning</div>
-          <div className="grid sm:grid-cols-2 gap-2">
-            {targets.map(w=>(
-              <div key={"tgt-"+w.id}
-                   onDragOver={(e)=>e.preventDefault()}
-                   onDrop={(e)=>onDrop(e, w.id)}
-                   className={
-                     "p-3 rounded-xl border min-h-[56px] bg-white " +
-                     (done[w.id] ? "border-green-600" : "border-dashed")
-                   }>
-                <div className="font-medium">{w.en}</div>
-                <div className="text-xs text-gray-500">{w.ru}</div>
-              </div>
-            ))}
-          </div>
-          {complete && <div className="mt-3 text-green-700 font-medium">Nice! All matched 🎉</div>}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/** ---------- Wordlist (reference) ---------- */
-function WordList({items, progress}) {
-  const [q, setQ] = React.useState("");
-  const filtered = items.filter(w =>
-    w.zh.includes(q) || w.en.toLowerCase().includes(q.toLowerCase()) || w.ru.toLowerCase().includes(q.toLowerCase())
-  );
-  return (
-    <div className="max-w-6xl mx-auto p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Wordlist</h3>
-        <input className="border rounded-xl px-3 py-1.5 w-60"
-               placeholder="Search…" value={q} onChange={e=>setQ(e.target.value)} />
-      </div>
-      <div className="mt-3 overflow-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-500">
-              <th className="py-2 pr-3">#</th>
-              <th className="py-2 pr-3">汉字</th>
-              <th className="py-2 pr-3">English</th>
-              <th className="py-2 pr-3">Русский</th>
-              <th className="py-2 pr-3">Mastery</th>
-              <th className="py-2 pr-3">Speak</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((w,idx)=>(
-              <tr key={w.id} className="border-t">
-                <td className="py-2 pr-3">{idx+1}</td>
-                <td className="py-2 pr-3 font-medium">{w.zh}</td>
-                <td className="py-2 pr-3">{w.en}</td>
-                <td className="py-2 pr-3 text-gray-600">{w.ru}</td>
-                <td className="py-2 pr-3">{(progress[w.id]?.m||0)}/5</td>
-                <td className="py-2 pr-3">
-                  <button className="btn btn-soft" onClick={()=>speak(w.zh,'zh-CN')}>🔊</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-/** ---------- App ---------- */
-function App(){
-  const [deck, setDeck] = React.useState("ALL");
-  const [mode, setMode] = React.useState("Flashcards");
-  const [progress, setProgress] = React.useState(loadProgress());
-
-  const items = React.useMemo(()=>{
-    if (deck==="L1") return L1;
-    if (deck==="L2") return L2;
-    return ALL;
-  }, [deck]);
-
-  const updateProgress = (id, value) => {
-    setProgress(prev=>{
-      const cur = prev[id]?.m ?? 0;
-      let m;
-      if (typeof value === "string") {
-        if (value === "+1") m = Math.min(5, cur+1);
-        else if (value === "-1") m = Math.max(0, cur-1);
-      } else {
-        m = value;
-      }
-      const next = { ...prev, [id]: { m } };
-      saveProgress(next);
-      return next;
-    });
-  };
-
-  const stats = React.useMemo(()=>{
-    const total = items.length;
-    const mastered = items.filter(w => (progress[w.id]?.m||0) >= 4).length;
-    const percent = total ? Math.round(mastered*100/total) : 0;
-    return { total, mastered, percent };
-  }, [items, progress]);
-
-  const onReset = () => {
-    if (confirm("Clear all progress?")) {
-      localStorage.removeItem(STORAGE_KEY);
-      setProgress({});
-    }
-  };
-
-  return (
-    <div>
-      <Header deckName={deck==="ALL"?"L1&L2":" "+deck}
-              mode={mode} setMode={setMode}
-              stats={stats} onReset={onReset}/>
-      <DeckPicker deck={deck} setDeck={setDeck}/>
-      {mode==="Flashcards" && <Flashcards items={items} progress={progress} updateProgress={updateProgress}/>}
-      {mode==="Quiz" && <Quiz items={items} updateProgress={updateProgress}/>}
-      {mode==="Type-It" && <TypeIt items={items} updateProgress={updateProgress}/>}
-      {mode==="Mini-Game" && <MiniGame items={items} updateProgress={updateProgress}/>}
-      {mode==="List" && <WordList items={items} progress={progress}/>}
-      <footer className="max-w-6xl mx-auto px-4 py-8 text-xs text-gray-500">
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="chip">Theme: fresh green</span>
-          <span className="chip">Responsive</span>
-          <span className="chip">LocalStorage progress</span>
-          <span className="chip">Hotkeys: Space/K/A/V</span>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App/>);
-  </script>
+        // Render the App
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
 </body>
 </html>
