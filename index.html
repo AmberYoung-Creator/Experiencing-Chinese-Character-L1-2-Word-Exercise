@@ -75,7 +75,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // Word data structure
+        // Word data structure with corrected L1 and L2 decks
         const wordData = {
             'L1': [
                 { chinese: '一个', english: 'one/a', russian: 'один/одна' },
@@ -144,7 +144,7 @@
                 { chinese: '电话卡', english: 'phone card', russian: 'телефонная карта' },
                 { chinese: '一张卡', english: 'one card', russian: 'одна карта' },
                 { chinese: '一共', english: 'altogether', russian: 'всего' }
-            ],
+            ]
             'L1&2': [
                 { chinese: '一个', english: 'one/a', russian: 'один/одна' },
                 { chinese: '一天', english: 'one day', russian: 'один день' },
@@ -226,7 +226,7 @@
         // Main App Component
         function App() {
             const [mode, setMode] = useState('flashcard'); // flashcard, quiz, typeit, minigame, wordlist
-            const [currentDeck, setCurrentDeck] = useState('L1-2');
+            const [currentDeck, setCurrentDeck] = useState('L1');
             const [progress, setProgress] = useState({});
             
             // Load progress from localStorage on initial render
@@ -385,7 +385,6 @@
                         onChange={(e) => setCurrentDeck(e.target.value)}
                         className="bg-green-700 text-white px-2 py-1 rounded"
                     >
-                        <option value="L1-2">L1-2</option>
                         <option value="L1">L1</option>
                         <option value="L2">L2</option>
                     </select>
