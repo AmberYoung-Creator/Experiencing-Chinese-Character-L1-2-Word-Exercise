@@ -4,15 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chinese Character Learning</title>
-    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
         
         body {
             font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
         }
         
         .card {
@@ -35,10 +36,6 @@
         
         .card-back {
             transform: rotateY(180deg);
-        }
-        
-        .progress-bar {
-            transition: width 0.5s ease-in-out;
         }
         
         .word-card {
@@ -67,15 +64,55 @@
             70% { box-shadow: 0 0 0 10px rgba(72, 187, 120, 0); }
             100% { box-shadow: 0 0 0 0 rgba(72, 187, 120, 0); }
         }
+        
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #16a34a;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="bg-green-50 min-h-screen">
-    <div id="root"></div>
+<body class="min-h-screen">
+    <div id="root">
+        <div class="flex flex-col justify-center items-center h-screen bg-green-50 p-4">
+            <div class="text-center max-w-md">
+                <h1 class="text-3xl font-bold text-green-800 mb-4">Chinese Character Learning</h1>
+                <div class="loading-spinner mb-4"></div>
+                <p class="text-gray-600 mb-2">Loading application...</p>
+                <p class="text-sm text-gray-500">If this takes too long, check your internet connection.</p>
+            </div>
+        </div>
+    </div>
 
     <script type="text/babel">
+        // 检查React是否加载成功
+        if (typeof React === 'undefined') {
+            document.getElementById('root').innerHTML = `
+                <div class="flex justify-center items-center h-screen bg-red-50">
+                    <div class="text-center max-w-md p-8 bg-white rounded-xl shadow-lg">
+                        <h1 class="text-2xl font-bold text-red-800 mb-4">加载错误</h1>
+                        <p class="text-red-600 mb-4">无法加载React库。请检查网络连接后刷新页面。</p>
+                        <button onclick="window.location.reload()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                            刷新页面
+                        </button>
+                    </div>
+                </div>
+            `;
+            throw new Error("React not loaded");
+        }
+
         const { useState, useEffect, useRef } = React;
 
-        // Word data structure with corrected L1 and L2 decks
+        // 词汇数据
         const wordData = {
             'L1': [
                 { chinese: '一个', english: 'one/a', russian: 'один/одна' },
@@ -145,75 +182,9 @@
                 { chinese: '一张卡', english: 'one card', russian: 'одна карта' },
                 { chinese: '一共', english: 'altogether', russian: 'всего' }
             ]
-            'L1&2': [
-                { chinese: '一个', english: 'one/a', russian: 'один/одна' },
-                { chinese: '一天', english: 'one day', russian: 'один день' },
-                { chinese: '二十', english: 'twenty', russian: 'двадцать' },
-                { chinese: '十二', english: 'twelve', russian: 'двенадцать' },
-                { chinese: '三十', english: 'thirty', russian: 'тридцать' },
-                { chinese: '十三', english: 'thirteen', russian: 'тринадцать' },
-                { chinese: '十一', english: 'eleven', russian: 'одиннадцать' },
-                { chinese: '三十二', english: 'thirty-two', russian: 'тридцать два' },
-                { chinese: '上午', english: 'morning', russian: 'утро' },
-                { chinese: '上课', english: 'attend class', russian: 'посещать занятия' },
-                { chinese: '一千', english: 'one thousand', russian: 'одна тысяча' },
-                { chinese: '三千', english: 'three thousand', russian: 'три тысячи' },
-                { chinese: '下午', english: 'afternoon', russian: 'после полудня' },
-                { chinese: '学生', english: 'student', russian: 'студент' },
-                { chinese: '一个学生', english: 'one student', russian: 'один студент' },
-                { chinese: '十八', english: 'eighteen', russian: 'восемнадцать' },
-                { chinese: '八十', english: 'eighty', russian: 'восемьдесят' },
-                { chinese: '一个人', english: 'one person', russian: 'один человек' },
-                { chinese: '中国人', english: 'Chinese person', russian: 'китаец' },
-                { chinese: '八个学生', english: 'eight students', russian: 'восемь студентов' },
-                { chinese: '三个中国人', english: 'three Chinese people', russian: 'три китайца' },
-                { chinese: '今天', english: 'today', russian: 'сегодня' },
-                { chinese: '明天', english: 'tomorrow', russian: 'завтра' },
-                { chinese: '下课', english: 'finish class', russian: 'закончить занятия' },
-                { chinese: '六十', english: 'sixty', russian: 'шестьдесят' },
-                { chinese: '六千', english: 'six thousand', russian: 'шесть тысяч' },
-                { chinese: '学习', english: 'study', russian: 'учиться' }
-                { chinese: '工人', english: 'worker', russian: 'рабочий' },
-                { chinese: '工作', english: 'work', russian: 'работа' },
-                { chinese: '干什么', english: 'what to do', russian: 'что делать' },
-                { chinese: '土豆', english: 'potato', russian: 'картофель' },
-                { chinese: '王老师', english: 'Teacher Wang', russian: 'Учитель Ван' },
-                { chinese: '我姓王', english: 'My surname is Wang', russian: 'Моя фамилия Ван' },
-                { chinese: '牛奶', english: 'milk', russian: 'молоко' },
-                { chinese: '牛肉', english: 'beef', russian: 'говядина' },
-                { chinese: '工厂', english: 'factory', russian: 'фабрика' },
-                { chinese: '广告', english: 'advertisement', russian: 'реклама' },
-                { chinese: '大学', english: 'university', russian: 'университет' },
-                { chinese: '太好了', english: 'great', russian: 'отлично' },
-                { chinese: '开门', english: 'open the door', russian: 'открыть дверь' },
-                { chinese: '开始', english: 'start', russian: 'начать' },
-                { chinese: '关门', english: 'close the door', russian: 'закрыть дверь' },
-                { chinese: '木门', english: 'wooden door', russian: 'деревянная дверь' },
-                { chinese: '本子', english: 'notebook', russian: 'тетрадь' },
-                { chinese: '一本书', english: 'a book', russian: 'одна книга' },
-                { chinese: '不是', english: 'is not', russian: 'не является' },
-                { chinese: '不好', english: 'not good', russian: 'не хорошо' },
-                { chinese: '中文', english: 'Chinese language', russian: 'китайский язык' },
-                { chinese: '英文', english: 'English language', russian: 'английский язык' },
-                { chinese: '多少', english: 'how much/many', russian: 'сколько' },
-                { chinese: '很少', english: 'very few', russian: 'очень мало' },
-                { chinese: '来中国', english: 'come to China', russian: 'приехать в Китай' },
-                { chinese: '来北京', english: 'come to Beijing', russian: 'приехать в Пекин' },
-                { chinese: '走路', english: 'walk', russian: 'ходить пешком' },
-                { chinese: '作业', english: 'homework', russian: 'домашнее задание' },
-                { chinese: '火车', english: 'train', russian: 'поезд' },
-                { chinese: '一斤', english: 'one jin (500g)', russian: 'один цзинь (500г)' },
-                { chinese: '八斤', english: 'eight jin', russian: 'восемь цзиней' },
-                { chinese: '今年', english: 'this year', russian: 'в этом году' },
-                { chinese: '明年', english: 'next year', russian: 'в следующем году' },
-                { chinese: '头发', english: 'hair', russian: 'волосы' },
-                { chinese: '电话卡', english: 'phone card', russian: 'телефонная карта' },
-                { chinese: '一张卡', english: 'one card', russian: 'одна карта' },
-                { chinese: '一共', english: 'altogether', russian: 'всего' }
-            ]
         };
 
-        // Speech synthesis function
+        // 语音合成功能
         const speakText = (text, lang = 'zh-CN') => {
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
@@ -223,26 +194,34 @@
             }
         };
 
-        // Main App Component
+        // 主应用组件
         function App() {
-            const [mode, setMode] = useState('flashcard'); // flashcard, quiz, typeit, minigame, wordlist
+            const [mode, setMode] = useState('flashcard');
             const [currentDeck, setCurrentDeck] = useState('L1');
             const [progress, setProgress] = useState({});
             
-            // Load progress from localStorage on initial render
+            // 从localStorage加载进度
             useEffect(() => {
-                const savedProgress = localStorage.getItem('chineseLearningProgress');
-                if (savedProgress) {
-                    setProgress(JSON.parse(savedProgress));
+                try {
+                    const savedProgress = localStorage.getItem('chineseLearningProgress');
+                    if (savedProgress) {
+                        setProgress(JSON.parse(savedProgress));
+                    }
+                } catch (error) {
+                    console.error("Error loading progress:", error);
                 }
             }, []);
             
-            // Save progress to localStorage whenever it changes
+            // 保存进度到localStorage
             useEffect(() => {
-                localStorage.setItem('chineseLearningProgress', JSON.stringify(progress));
+                try {
+                    localStorage.setItem('chineseLearningProgress', JSON.stringify(progress));
+                } catch (error) {
+                    console.error("Error saving progress:", error);
+                }
             }, [progress]);
             
-            // Update progress for a word
+            // 更新单词进度
             const updateProgress = (word, mastery) => {
                 setProgress(prev => ({
                     ...prev,
@@ -250,14 +229,14 @@
                 }));
             };
             
-            // Reset progress
+            // 重置进度
             const resetProgress = () => {
-                if (window.confirm('Are you sure you want to reset all progress?')) {
+                if (window.confirm('确定要重置所有学习进度吗？此操作不可撤销。')) {
                     setProgress({});
                 }
             };
             
-            // Calculate stats
+            // 计算统计信息
             const stats = {
                 total: wordData[currentDeck].length,
                 mastered: Object.values(progress).filter(level => level >= 4).length,
@@ -266,58 +245,98 @@
             };
             
             return (
-                <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100">
-                    {/* Header */}
+                <div className="min-h-screen">
+                    {/* 顶部导航 */}
                     <header className="bg-green-600 text-white p-4 shadow-md">
                         <div className="container mx-auto flex flex-col md:flex-row justify-between items-center">
-                            <h1 className="text-2xl font-bold mb-2 md:mb-0">Chinese Character Learning</h1>
+                            <h1 className="text-2xl font-bold mb-2 md:mb-0">汉语词汇学习</h1>
                             <div className="flex items-center space-x-4">
-                                <DeckSelector 
-                                    currentDeck={currentDeck} 
-                                    setCurrentDeck={setCurrentDeck} 
-                                />
-                                <ProgressStats stats={stats} />
+                                <div className="flex items-center">
+                                    <span className="mr-2">词库:</span>
+                                    <select 
+                                        value={currentDeck} 
+                                        onChange={(e) => setCurrentDeck(e.target.value)}
+                                        className="bg-green-700 text-white px-2 py-1 rounded"
+                                    >
+                                        <option value="L1">L1 基础词汇</option>
+                                        <option value="L2">L2 扩展词汇</option>
+                                    </select>
+                                </div>
+                                
+                                <div className="flex items-center">
+                                    <div className="mr-4 text-center">
+                                        <div className="text-lg font-bold">{stats.mastered}/{stats.total}</div>
+                                        <div className="text-xs">已掌握</div>
+                                    </div>
+                                    <div className="w-24 bg-green-200 rounded-full h-2.5">
+                                        <div 
+                                            className="bg-green-700 h-2.5 rounded-full transition-all duration-500" 
+                                            style={{ width: `${Math.round((stats.mastered / stats.total) * 100)}%` }}
+                                        ></div>
+                                    </div>
+                                    <span className="ml-2 text-sm">{Math.round((stats.mastered / stats.total) * 100)}%</span>
+                                </div>
                             </div>
                         </div>
                     </header>
                     
-                    {/* Navigation */}
+                    {/* 模式选择 */}
                     <nav className="bg-white shadow-sm py-3">
                         <div className="container mx-auto flex flex-wrap justify-center">
-                            <ModeButton 
-                                mode="flashcard" 
-                                currentMode={mode} 
-                                setMode={setMode} 
-                                label="Flashcards" 
-                            />
-                            <ModeButton 
-                                mode="quiz" 
-                                currentMode={mode} 
-                                setMode={setMode} 
-                                label="Quiz" 
-                            />
-                            <ModeButton 
-                                mode="typeit" 
-                                currentMode={mode} 
-                                setMode={setMode} 
-                                label="Type It" 
-                            />
-                            <ModeButton 
-                                mode="minigame" 
-                                currentMode={mode} 
-                                setMode={setMode} 
-                                label="Mini Game" 
-                            />
-                            <ModeButton 
-                                mode="wordlist" 
-                                currentMode={mode} 
-                                setMode={setMode} 
-                                label="Word List" 
-                            />
+                            <button
+                                onClick={() => setMode('flashcard')}
+                                className={`mx-2 my-1 px-4 py-2 rounded-lg transition-colors ${
+                                    mode === 'flashcard' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                }`}
+                            >
+                                单词卡
+                            </button>
+                            <button
+                                onClick={() => setMode('quiz')}
+                                className={`mx-2 my-1 px-4 py-2 rounded-lg transition-colors ${
+                                    mode === 'quiz' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                }`}
+                            >
+                                选择题
+                            </button>
+                            <button
+                                onClick={() => setMode('typeit')}
+                                className={`mx-2 my-1 px-4 py-2 rounded-lg transition-colors ${
+                                    mode === 'typeit' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                }`}
+                            >
+                                打字练习
+                            </button>
+                            <button
+                                onClick={() => setMode('minigame')}
+                                className={`mx-2 my-1 px-4 py-2 rounded-lg transition-colors ${
+                                    mode === 'minigame' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                }`}
+                            >
+                                配对游戏
+                            </button>
+                            <button
+                                onClick={() => setMode('wordlist')}
+                                className={`mx-2 my-1 px-4 py-2 rounded-lg transition-colors ${
+                                    mode === 'wordlist' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                }`}
+                            >
+                                词汇表
+                            </button>
                         </div>
                     </nav>
                     
-                    {/* Main Content */}
+                    {/* 主要内容区域 */}
                     <main className="container mx-auto p-4">
                         {mode === 'flashcard' && (
                             <FlashcardMode 
@@ -359,15 +378,15 @@
                         )}
                     </main>
                     
-                    {/* Footer */}
+                    {/* 页脚 */}
                     <footer className="bg-green-800 text-white p-4 mt-8">
                         <div className="container mx-auto flex flex-col md:flex-row justify-between items-center">
-                            <p>Chinese Learning App &copy; {new Date().getFullYear()}</p>
+                            <p>汉语学习应用 &copy; {new Date().getFullYear()}</p>
                             <button 
                                 onClick={resetProgress}
                                 className="mt-2 md:mt-0 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
                             >
-                                Reset Progress
+                                重置进度
                             </button>
                         </div>
                     </footer>
@@ -375,84 +394,27 @@
             );
         }
 
-        // Deck Selector Component
-        function DeckSelector({ currentDeck, setCurrentDeck }) {
-            return (
-                <div className="flex items-center">
-                    <span className="mr-2">Deck:</span>
-                    <select 
-                        value={currentDeck} 
-                        onChange={(e) => setCurrentDeck(e.target.value)}
-                        className="bg-green-700 text-white px-2 py-1 rounded"
-                    >
-                        <option value="L1">L1</option>
-                        <option value="L2">L2</option>
-                    </select>
-                </div>
-            );
-        }
-
-        // Progress Stats Component
-        function ProgressStats({ stats }) {
-            const percentage = Math.round((stats.mastered / stats.total) * 100);
-            
-            return (
-                <div className="flex items-center">
-                    <div className="mr-4 text-center">
-                        <div className="text-lg font-bold">{stats.mastered}/{stats.total}</div>
-                        <div className="text-xs">Mastered</div>
-                    </div>
-                    <div className="w-24 bg-green-200 rounded-full h-2.5">
-                        <div 
-                            className="bg-green-700 h-2.5 rounded-full progress-bar" 
-                            style={{ width: `${percentage}%` }}
-                        ></div>
-                    </div>
-                    <span className="ml-2 text-sm">{percentage}%</span>
-                </div>
-            );
-        }
-
-        // Mode Button Component
-        function ModeButton({ mode, currentMode, setMode, label }) {
-            const isActive = mode === currentMode;
-            
-            return (
-                <button
-                    onClick={() => setMode(mode)}
-                    className={`mx-2 my-1 px-4 py-2 rounded-lg transition-colors ${
-                        isActive 
-                            ? 'bg-green-600 text-white' 
-                            : 'bg-green-100 text-green-800 hover:bg-green-200'
-                    }`}
-                >
-                    {label}
-                </button>
-            );
-        }
-
-        // Flashcard Mode Component
+        // 单词卡模式组件
         function FlashcardMode({ deck, progress, updateProgress }) {
             const [currentIndex, setCurrentIndex] = useState(0);
             const [isFlipped, setIsFlipped] = useState(false);
-            const cardRef = useRef(null);
             
-            // Keyboard shortcuts
+            // 键盘快捷键
             useEffect(() => {
                 const handleKeyDown = (e) => {
                     if (e.code === 'Space') {
                         e.preventDefault();
                         setIsFlipped(!isFlipped);
                     } else if (e.code === 'KeyK' && isFlipped) {
-                        // Knew it
+                        // 认识
                         updateProgress(deck[currentIndex].chinese, Math.min(5, (progress[deck[currentIndex].chinese] || 0) + 1));
                         nextCard();
                     } else if (e.code === 'KeyA' && isFlipped) {
-                        // Again
+                        // 不认识
                         updateProgress(deck[currentIndex].chinese, Math.max(0, (progress[deck[currentIndex].chinese] || 0) - 1));
                         nextCard();
                     } else if (e.code === 'KeyV') {
-                        // Voice
+                        // 发音
                         if (isFlipped) {
                             speakText(deck[currentIndex].english, 'en-US');
                         } else {
@@ -484,7 +446,7 @@
                             onClick={prevCard}
                             className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
                         >
-                            Previous
+                            上一个
                         </button>
                         <div className="text-center">
                             <span className="font-bold">{currentIndex + 1}</span> / {deck.length}
@@ -503,12 +465,11 @@
                             onClick={nextCard}
                             className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
                         >
-                            Next
+                            下一个
                         </button>
                     </div>
                     
                     <div 
-                        ref={cardRef}
                         className={`card relative w-full h-64 cursor-pointer ${isFlipped ? 'flipped' : ''}`}
                         onClick={() => setIsFlipped(!isFlipped)}
                     >
@@ -523,10 +484,10 @@
                                 }}
                                 className="px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition-colors"
                             >
-                                🔊 Speak
+                                🔊 发音
                             </button>
                             <div className="mt-4 text-sm text-gray-500">
-                                Click or press Space to flip
+                                点击或按空格键翻转
                             </div>
                         </div>
                         
@@ -545,7 +506,7 @@
                                     }}
                                     className="px-3 py-1 bg-white text-green-800 rounded-lg hover:bg-green-200 transition-colors"
                                 >
-                                    🔊 EN
+                                    🔊 英文
                                 </button>
                                 <button 
                                     onClick={(e) => {
@@ -555,7 +516,7 @@
                                     }}
                                     className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
                                 >
-                                    Knew It (K)
+                                    认识 (K)
                                 </button>
                                 <button 
                                     onClick={(e) => {
@@ -565,20 +526,20 @@
                                     }}
                                     className="px-3 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
                                 >
-                                    Again (A)
+                                    不认识 (A)
                                 </button>
                             </div>
                         </div>
                     </div>
                     
                     <div className="mt-6 text-center text-sm text-gray-600">
-                        <p>Keyboard shortcuts: Space = Flip, K = Knew It, A = Again, V = Voice</p>
+                        <p>键盘快捷键: 空格 = 翻转, K = 认识, A = 不认识, V = 发音</p>
                     </div>
                 </div>
             );
         }
 
-        // Quiz Mode Component
+        // 选择题模式组件
         function QuizMode({ deck, progress, updateProgress }) {
             const [currentIndex, setCurrentIndex] = useState(0);
             const [options, setOptions] = useState([]);
@@ -586,7 +547,7 @@
             const [showResult, setShowResult] = useState(false);
             const [score, setScore] = useState(0);
             
-            // Initialize quiz
+            // 初始化测验
             useEffect(() => {
                 if (deck.length > 0) {
                     generateOptions(currentIndex);
@@ -621,7 +582,7 @@
                     updateProgress(deck[currentIndex].chinese, Math.max(0, (progress[deck[currentIndex].chinese] || 0) - 1));
                 }
                 
-                // Auto-advance after 1.5 seconds
+                // 1.5秒后自动进入下一题
                 setTimeout(() => {
                     nextQuestion();
                 }, 1500);
@@ -636,7 +597,7 @@
             if (deck.length < 4) {
                 return (
                     <div className="text-center p-8 bg-white rounded-xl shadow-lg">
-                        <p className="text-lg">Not enough words in this deck for a quiz. Need at least 4 words.</p>
+                        <p className="text-lg">此词库中的单词不足，无法进行测验。至少需要4个单词。</p>
                     </div>
                 );
             }
@@ -644,13 +605,13 @@
             return (
                 <div className="max-w-2xl mx-auto">
                     <div className="mb-6 text-center">
-                        <h2 className="text-2xl font-bold text-green-800 mb-2">Multiple Choice Quiz</h2>
+                        <h2 className="text-2xl font-bold text-green-800 mb-2">选择题测验</h2>
                         <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow">
                             <div>
-                                Question: <span className="font-bold">{currentIndex + 1}</span> / {deck.length}
+                                题目: <span className="font-bold">{currentIndex + 1}</span> / {deck.length}
                             </div>
                             <div>
-                                Score: <span className="font-bold">{score}</span> / {deck.length}
+                                得分: <span className="font-bold">{score}</span> / {deck.length}
                             </div>
                         </div>
                     </div>
@@ -658,7 +619,7 @@
                     <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
                         <div className="text-center mb-6">
                             <div className="text-lg text-gray-700 mb-2">
-                                What is the Chinese character for:
+                                以下英文对应的中文是:
                             </div>
                             <div className="text-2xl font-bold text-green-800">
                                 {deck[currentIndex]?.english}
@@ -706,7 +667,7 @@
                                 onClick={nextQuestion}
                                 className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
                             >
-                                Next Question
+                                下一题
                             </button>
                         </div>
                     )}
@@ -714,7 +675,7 @@
             );
         }
 
-        // Type It Mode Component
+        // 打字练习模式组件
         function TypeItMode({ deck, progress, updateProgress }) {
             const [currentIndex, setCurrentIndex] = useState(0);
             const [userInput, setUserInput] = useState('');
@@ -761,16 +722,16 @@
             return (
                 <div className="max-w-2xl mx-auto">
                     <div className="mb-6 text-center">
-                        <h2 className="text-2xl font-bold text-green-800 mb-2">Type the Chinese Characters</h2>
+                        <h2 className="text-2xl font-bold text-green-800 mb-2">打字练习</h2>
                         <div className="bg-white p-4 rounded-lg shadow inline-block">
-                            Question: <span className="font-bold">{currentIndex + 1}</span> / {deck.length}
+                            题目: <span className="font-bold">{currentIndex + 1}</span> / {deck.length}
                         </div>
                     </div>
                     
                     <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
                         <div className="text-center mb-6">
                             <div className="text-lg text-gray-700 mb-2">
-                                Type the Chinese characters for:
+                                输入以下内容的中文:
                             </div>
                             <div className="text-2xl font-bold text-green-800">
                                 {deck[currentIndex]?.english}
@@ -788,7 +749,7 @@
                                 onChange={(e) => setUserInput(e.target.value)}
                                 onKeyPress={handleKeyPress}
                                 className="w-full max-w-md p-4 text-xl border-2 border-green-300 rounded-lg focus:outline-none focus:border-green-500 text-center"
-                                placeholder="Type here..."
+                                placeholder="在此输入中文..."
                                 disabled={showResult}
                             />
                             
@@ -796,16 +757,16 @@
                                 <div className={`mt-4 p-4 rounded-lg ${isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                     {isCorrect ? (
                                         <div className="text-center">
-                                            <div className="text-2xl font-bold">Correct!</div>
+                                            <div className="text-2xl font-bold">正确!</div>
                                             <div className="text-lg mt-2">{deck[currentIndex]?.chinese}</div>
                                         </div>
                                     ) : (
                                         <div className="text-center">
-                                            <div className="text-xl font-bold">Incorrect</div>
+                                            <div className="text-xl font-bold">错误</div>
                                             <div className="mt-2">
-                                                The correct answer is: <span className="font-bold text-lg">{deck[currentIndex]?.chinese}</span>
+                                                正确答案: <span className="font-bold text-lg">{deck[currentIndex]?.chinese}</span>
                                             </div>
-                                            <div className="mt-2">Your answer: {userInput}</div>
+                                            <div className="mt-2">你的答案: {userInput}</div>
                                         </div>
                                     )}
                                 </div>
@@ -819,34 +780,34 @@
                                 onClick={checkAnswer}
                                 className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
                             >
-                                Check Answer
+                                检查答案
                             </button>
                         ) : (
                             <button 
                                 onClick={nextWord}
                                 className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
                             >
-                                Next Word
+                                下一个单词
                             </button>
                         )}
                     </div>
                     
                     <div className="mt-6 text-center text-sm text-gray-600">
-                        <p>Press Enter to check your answer or move to the next word</p>
+                        <p>按Enter键检查答案或进入下一个单词</p>
                     </div>
                 </div>
             );
         }
 
-        // Mini Game Mode Component
+        // 配对游戏模式组件
         function MiniGameMode({ deck, progress, updateProgress }) {
-            const [gameState, setGameState] = useState('setup'); // setup, playing, result
+            const [gameState, setGameState] = useState('setup');
             const [pairs, setPairs] = useState([]);
             const [selectedTile, setSelectedTile] = useState(null);
             const [matchedPairs, setMatchedPairs] = useState([]);
             const [moves, setMoves] = useState(0);
             
-            // Initialize game
+            // 初始化游戏
             useEffect(() => {
                 if (gameState === 'setup' && deck.length >= 4) {
                     startGame();
@@ -854,12 +815,12 @@
             }, [deck, gameState]);
             
             const startGame = () => {
-                // Select 8 random words (4 pairs)
+                // 选择8个随机单词（4对）
                 const selectedWords = [...deck]
                     .sort(() => 0.5 - Math.random())
                     .slice(0, 4);
                 
-                // Create pairs: Chinese and English
+                // 创建配对：中文和英文
                 const newPairs = [];
                 selectedWords.forEach(word => {
                     newPairs.push(
@@ -868,7 +829,7 @@
                     );
                 });
                 
-                // Shuffle the pairs
+                // 洗牌
                 setPairs(newPairs.sort(() => 0.5 - Math.random()));
                 setMatchedPairs([]);
                 setMoves(0);
@@ -887,26 +848,26 @@
                 
                 setMoves(moves + 1);
                 
-                // Check if tiles match
+                // 检查是否匹配
                 if (selectedTile.pairId === tile.pairId) {
-                    // Match found
+                    // 匹配成功
                     setMatchedPairs([...matchedPairs, tile.pairId]);
                     setSelectedTile(null);
                     
-                    // Update progress for matched word
+                    // 更新进度
                     updateProgress(tile.pairId, Math.min(5, (progress[tile.pairId] || 0) + 1));
                     
-                    // Speak the word
+                    // 发音
                     speakText(tile.pairId);
                     
-                    // Check if game is complete
+                    // 检查游戏是否完成
                     if (matchedPairs.length + 1 === 4) {
                         setTimeout(() => {
                             setGameState('result');
                         }, 1000);
                     }
                 } else {
-                    // No match
+                    // 不匹配
                     setTimeout(() => {
                         setSelectedTile(null);
                     }, 1000);
@@ -916,7 +877,7 @@
             if (deck.length < 4) {
                 return (
                     <div className="text-center p-8 bg-white rounded-xl shadow-lg">
-                        <p className="text-lg">Not enough words in this deck for the game. Need at least 4 words.</p>
+                        <p className="text-lg">此词库中的单词不足，无法进行游戏。至少需要4个单词。</p>
                     </div>
                 );
             }
@@ -924,13 +885,13 @@
             return (
                 <div className="max-w-4xl mx-auto">
                     <div className="mb-6 text-center">
-                        <h2 className="text-2xl font-bold text-green-800 mb-2">Matching Game</h2>
-                        <p className="text-gray-700">Match Chinese characters with their English translations</p>
+                        <h2 className="text-2xl font-bold text-green-800 mb-2">配对游戏</h2>
+                        <p className="text-gray-700">将中文词汇与对应的英文翻译配对</p>
                         
                         {gameState === 'playing' && (
                             <div className="mt-4 bg-white p-4 rounded-lg shadow inline-block">
-                                Moves: <span className="font-bold">{moves}</span> | 
-                                Matched: <span className="font-bold">{matchedPairs.length}</span> / 4
+                                移动次数: <span className="font-bold">{moves}</span> | 
+                                已匹配: <span className="font-bold">{matchedPairs.length}</span> / 4
                             </div>
                         )}
                     </div>
@@ -941,7 +902,7 @@
                                 onClick={startGame}
                                 className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-xl"
                             >
-                                Start Game
+                                开始游戏
                             </button>
                         </div>
                     )}
@@ -981,15 +942,15 @@
                     
                     {gameState === 'result' && (
                         <div className="text-center bg-white rounded-xl shadow-lg p-8">
-                            <div className="text-3xl font-bold text-green-800 mb-4">Game Complete!</div>
+                            <div className="text-3xl font-bold text-green-800 mb-4">游戏完成!</div>
                             <div className="text-xl mb-6">
-                                You matched all pairs in <span className="font-bold">{moves}</span> moves!
+                                你在 <span className="font-bold">{moves}</span> 次移动中匹配了所有单词!
                             </div>
                             <button 
                                 onClick={() => setGameState('setup')}
                                 className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-xl"
                             >
-                                Play Again
+                                再玩一次
                             </button>
                         </div>
                     )}
@@ -997,9 +958,9 @@
             );
         }
 
-        // Word List Mode Component
+        // 词汇表模式组件
         function WordListMode({ deck, progress }) {
-            const [filter, setFilter] = useState('all'); // all, mastered, learning, new
+            const [filter, setFilter] = useState('all');
             
             const filteredDeck = deck.filter(word => {
                 const mastery = progress[word.chinese] || 0;
@@ -1015,33 +976,49 @@
             return (
                 <div className="max-w-6xl mx-auto">
                     <div className="mb-6 flex flex-col md:flex-row justify-between items-center">
-                        <h2 className="text-2xl font-bold text-green-800 mb-4 md:mb-0">Word List</h2>
+                        <h2 className="text-2xl font-bold text-green-800 mb-4 md:mb-0">词汇表</h2>
                         
                         <div className="flex space-x-2">
-                            <FilterButton 
-                                filter="all" 
-                                currentFilter={filter} 
-                                setFilter={setFilter} 
-                                label="All Words" 
-                            />
-                            <FilterButton 
-                                filter="new" 
-                                currentFilter={filter} 
-                                setFilter={setFilter} 
-                                label="New" 
-                            />
-                            <FilterButton 
-                                filter="learning" 
-                                currentFilter={filter} 
-                                setFilter={setFilter} 
-                                label="Learning" 
-                            />
-                            <FilterButton 
-                                filter="mastered" 
-                                currentFilter={filter} 
-                                setFilter={setFilter} 
-                                label="Mastered" 
-                            />
+                            <button
+                                onClick={() => setFilter('all')}
+                                className={`px-3 py-1 rounded-lg transition-colors ${
+                                    filter === 'all' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                }`}
+                            >
+                                全部单词
+                            </button>
+                            <button
+                                onClick={() => setFilter('new')}
+                                className={`px-3 py-1 rounded-lg transition-colors ${
+                                    filter === 'new' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                }`}
+                            >
+                                新单词
+                            </button>
+                            <button
+                                onClick={() => setFilter('learning')}
+                                className={`px-3 py-1 rounded-lg transition-colors ${
+                                    filter === 'learning' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                }`}
+                            >
+                                学习中
+                            </button>
+                            <button
+                                onClick={() => setFilter('mastered')}
+                                className={`px-3 py-1 rounded-lg transition-colors ${
+                                    filter === 'mastered' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                }`}
+                            >
+                                已掌握
+                            </button>
                         </div>
                     </div>
                     
@@ -1090,13 +1067,13 @@
                                             onClick={() => speakText(word.chinese)}
                                             className="px-2 py-1 bg-green-200 text-green-800 rounded text-sm hover:bg-green-300 transition-colors"
                                         >
-                                            🔊 CN
+                                            🔊 中文
                                         </button>
                                         <button 
                                             onClick={() => speakText(word.english, 'en-US')}
                                             className="px-2 py-1 bg-blue-200 text-blue-800 rounded text-sm hover:bg-blue-300 transition-colors"
                                         >
-                                            🔊 EN
+                                            🔊 英文
                                         </button>
                                     </div>
                                 </div>
@@ -1106,33 +1083,31 @@
                     
                     {filteredDeck.length === 0 && (
                         <div className="text-center p-8 bg-white rounded-xl shadow-lg">
-                            <p className="text-lg">No words match the selected filter.</p>
+                            <p className="text-lg">没有符合筛选条件的单词。</p>
                         </div>
                     )}
                 </div>
             );
         }
 
-        // Filter Button Component for Word List
-        function FilterButton({ filter, currentFilter, setFilter, label }) {
-            const isActive = filter === currentFilter;
-            
-            return (
-                <button
-                    onClick={() => setFilter(filter)}
-                    className={`px-3 py-1 rounded-lg transition-colors ${
-                        isActive 
-                            ? 'bg-green-600 text-white' 
-                            : 'bg-green-100 text-green-800 hover:bg-green-200'
-                    }`}
-                >
-                    {label}
-                </button>
-            );
+        // 渲染应用
+        try {
+            ReactDOM.render(React.createElement(App), document.getElementById('root'));
+        } catch (error) {
+            console.error("Application error:", error);
+            document.getElementById('root').innerHTML = `
+                <div class="flex justify-center items-center h-screen bg-red-50">
+                    <div class="text-center max-w-md p-8 bg-white rounded-xl shadow-lg">
+                        <h1 class="text-2xl font-bold text-red-800 mb-4">应用程序错误</h1>
+                        <p class="text-red-600 mb-4">${error.message}</p>
+                        <p class="text-sm text-gray-500 mb-4">请检查控制台获取详细信息。</p>
+                        <button onclick="window.location.reload()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                            刷新页面
+                        </button>
+                    </div>
+                </div>
+            `;
         }
-
-        // Render the App
-        ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
 </html>
